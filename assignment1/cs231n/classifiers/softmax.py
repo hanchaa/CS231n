@@ -75,17 +75,14 @@ def softmax_loss_vectorized(W, X, y, reg):
 
   scores = X.dot(W)
   exponential_scores = np.exp(scores)
-  correct_class_score = scores[np.arange(num_train), y]
-  sum_of_exponential_scores = np.sum(exponential_scores, axis=1)
+  probabilities = exponential_scores / np.sum(exponential_scores, axis=1, keepdims=True)
 
-  loss = np.mean(-np.log(np.exp(correct_class_score) / sum_of_exponential_scores))
-  dW = (X.T / sum_of_exponential_scores).dot(exponential_scores)
+  dprobabilities = np.copy(probabilities)
+  dprobabilities[np.arange(num_train), y] -= 1
+  dprobabilities /= num_train
 
-  correct_class_derivation = np.zeros(scores.shape)
-  correct_class_derivation[np.arange(num_train), y] = -1
-  dW += X.T.dot(correct_class_derivation)
-
-  dW /= num_train
+  loss = np.mean(-np.log(probabilities[np.arange(num_train), y]))
+  dW = X.T.dot(dprobabilities)
 
   loss += reg * np.sum(W * W)
   dW += 2 * reg * W
