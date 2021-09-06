@@ -65,7 +65,10 @@ def sgd_momentum(w, dw, config=None):
     # TODO: Implement the momentum update formula. Store the updated value in #
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
-    pass
+    learning_rate, momentum = config["learning_rate"], config["momentum"]
+
+    v = momentum * v - learning_rate * dw
+    next_w = w + v
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -99,7 +102,12 @@ def rmsprop(x, dx, config=None):
     # in the next_x variable. Don't forget to update cache value stored in    #
     # config['cache'].                                                        #
     ###########################################################################
-    pass
+    learning_rate, decay_rate, epsilon = config["learning_rate"], config["decay_rate"], config["epsilon"]
+    cache = config["cache"]
+
+    cache = decay_rate * cache + (1 - decay_rate) * dx * dx
+    next_x = x - learning_rate * dx / (np.sqrt(cache) + epsilon)
+    config["cache"] = cache
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -136,7 +144,19 @@ def adam(x, dx, config=None):
     # the next_x variable. Don't forget to update the m, v, and t variables   #
     # stored in config.                                                       #
     ###########################################################################
-    pass
+
+    learning_rate, beta1, beta2, epsilon = config["learning_rate"], config["beta1"], config["beta2"], config["epsilon"]
+    m, v, t = config["m"], config["v"], config["t"]
+    t = t + 1
+
+    m = beta1 * m + (1 - beta1) * dx
+    m_unbias = m / (1 - beta1 ** t)
+    v = beta2 * v + (1 - beta2) * dx * dx
+    v_unbias = v / (1 - beta2 ** t)
+
+    next_x = x - learning_rate * m_unbias / (np.sqrt(v_unbias) + epsilon)
+
+    config["m"], config["v"], config["t"] = m, v, t
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
