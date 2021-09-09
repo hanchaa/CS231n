@@ -248,14 +248,18 @@ class FullyConnectedNet(object):
         ############################################################################
         caches = []
         for i in range(self.num_layers - 1):
+            cache = {}
             W, b = self.params["W" + str(i + 1)], self.params["b" + str(i + 1)]
 
             if self.use_batchnorm:
                 gamma, beta = self.params["gamma" + str(i + 1)], self.params["beta" + str(i + 1)]
-                X, cache = affine_bn_relu_forward(X, W, b, gamma, beta, self.bn_params[i])
+                X, cache["relu"] = affine_bn_relu_forward(X, W, b, gamma, beta, self.bn_params[i])
 
             else:
-                X, cache = affine_relu_forward(X, W, b)
+                X, cache["relu"] = affine_relu_forward(X, W, b)
+
+            if self.use_dropout:
+                X, cache["dropout"] = dropout_forward(X, self.dropout_param)
 
             caches.append(cache)
 
@@ -291,11 +295,14 @@ class FullyConnectedNet(object):
         grads["W" + str(self.num_layers)] += self.reg * self.params["W" + str(self.num_layers)]
 
         for i in reversed(range(self.num_layers - 1)):
+            if self.use_dropout:
+                dout = dropout_backward(dout, caches[i]["dropout"])
+
             if self.use_batchnorm:
-                dout, grads["W" + str(i + 1)], grads["b" + str(i + 1)], grads["gamma" + str(i + 1)], grads["beta" + str(i + 1)] = affine_bn_relu_backward(dout, caches[i])
+                dout, grads["W" + str(i + 1)], grads["b" + str(i + 1)], grads["gamma" + str(i + 1)], grads["beta" + str(i + 1)] = affine_bn_relu_backward(dout, caches[i]["relu"])
 
             else:
-                dout, grads["W" + str(i + 1)], grads["b" + str(i + 1)] = affine_relu_backward(dout, caches[i])
+                dout, grads["W" + str(i + 1)], grads["b" + str(i + 1)] = affine_relu_backward(dout, caches[i]["relu"])
 
             grads["W" + str(i + 1)] += self.reg * self.params["W" + str(i + 1)]
         ############################################################################
