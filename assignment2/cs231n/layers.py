@@ -394,7 +394,20 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pass
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    stride, pad = conv_param["stride"], conv_param["pad"]
+    H_prime = 1 + (H + 2 * pad - HH) // stride
+    W_prime = 1 + (W + 2 * pad - WW) // stride
+
+    out = np.zeros((N, F, H_prime, W_prime))
+
+    for n in range(N):
+        x_padded = np.pad(x[n], ((0, 0), (pad, pad), (pad, pad)))
+        for f in range(F):
+            for i in range(H_prime):
+                for j in range(W_prime):
+                    out[n, f, i, j] = np.sum(x_padded[:, i * stride:i * stride + HH, j * stride:j * stride + WW] * w[f, :, :, :]) + b[f]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -419,7 +432,29 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    x, w, b, conv_param = cache
+    stride, pad = conv_param["stride"], conv_param["pad"]
+
+    db = np.sum(dout, axis=(0, 2, 3))
+
+    x_padded = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)))
+    dw = np.zeros_like(w)
+    for f in range(w.shape[0]):
+        for i in range(w.shape[2]):
+            for j in range(w.shape[3]):
+                x_stride = x_padded[:, :, i:x_padded.shape[2] - w.shape[2] + 1 + i:stride, j:x_padded.shape[3] - w.shape[3] + 1 + j:stride]
+                dout_f = dout[:, f, :, :]
+                dw[f, :, i, j] = np.sum(x_stride * dout_f[:, np.newaxis, :, :], axis=(0, 2, 3))
+
+    dx_padded = np.zeros_like(x_padded)
+
+    for n in range(x.shape[0]):
+        for i in range(dout.shape[2]):
+            for j in range(dout.shape[3]):
+                dout_n = dout[n, :, i, j]
+                dx_padded[n, :, i * stride:i * stride + w.shape[2], j * stride:j * stride + w.shape[3]] += np.sum(w * dout_n[:, np.newaxis, np.newaxis, np.newaxis], axis=0)
+
+    dx = dx_padded[:, :, pad:pad + x.shape[2], pad:pad + x.shape[3]]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
