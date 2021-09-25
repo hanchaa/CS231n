@@ -137,7 +137,21 @@ class CaptioningRNN(object):
         # defined above to store loss and gradients; grads[k] should give the      #
         # gradients for self.params[k].                                            #
         ############################################################################
-        pass
+        h0 = features.dot(W_proj) + b_proj
+
+        x, we_cache = word_embedding_forward(captions_in, W_embed)
+        h, rnn_cache = rnn_forward(x, h0, Wx, Wh, b)
+        score, voc_cache = temporal_affine_forward(h, W_vocab, b_vocab)
+
+        loss, dscore = temporal_softmax_loss(score, captions_out, mask)
+
+        dh, dW_vocab, db_vocab = temporal_affine_backward(dscore, voc_cache)
+        dx, dh0, dWx, dWh, db = rnn_backward(dh, rnn_cache)
+        dW_embed = word_embedding_backward(dx, we_cache)
+        dW_proj = features.T.dot(dh0)
+        db_proj = dh0.sum(axis=0)
+
+        grads = {"W_proj": dW_proj, "b_proj": db_proj, "W_embed": dW_embed, "Wx": dWx, "Wh": dWh, "b": db, "W_vocab": dW_vocab, "b_vocab": db_vocab}
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -199,7 +213,19 @@ class CaptioningRNN(object):
         # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
         # a loop.                                                                 #
         ###########################################################################
-        pass
+        h = features.dot(W_proj) + b_proj
+        W = W_embed.shape[1]
+        x = np.ones((N, W)) * W_embed[self._start]
+
+        for i in range(max_length):
+            next_h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            out = next_h.dot(W_vocab) + b_vocab
+            max_indices = out.argmax(axis=1)
+
+            captions[:, i] = max_indices
+
+            x = W_embed[max_indices]
+            h = next_h
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
